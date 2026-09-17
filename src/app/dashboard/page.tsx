@@ -2,6 +2,7 @@
 
 import { useEffect, useReducer, useRef, useState } from "react";
 
+import { AuthorizeDialog } from "@/components/authorize-dialog";
 import { ComingSoonCard, ConnectorCard } from "@/components/connector-card";
 import { IngestionPanel, type IngestedItem } from "@/components/ingestion-panel";
 import { TopBar } from "@/components/top-bar";
@@ -21,6 +22,8 @@ type ConnectorState = { status: ConnectionStatus; connectedAt?: number };
 
 type State = {
   connectors: Record<ConnectorId, ConnectorState>;
+  /** Connector awaiting a decision on the simulated consent screen. */
+  pendingAuth: ConnectorId | null;
   /** Sources with a mock sync in flight. */
   syncing: ConnectorId[];
   /** Sources whose mock ingestion has resolved, in completion order. */
@@ -28,6 +31,8 @@ type State = {
 };
 
 type Action =
+  | { type: "request_auth"; id: ConnectorId }
+  | { type: "cancel_auth" }
   | { type: "connect_start"; id: ConnectorId }
   | { type: "connect_done"; id: ConnectorId; at: number }
   | { type: "ingest_done"; id: ConnectorId };
@@ -37,15 +42,24 @@ const initialState: State = {
     confluence: { status: "disconnected" },
     github: { status: "disconnected" },
   },
+  pendingAuth: null,
   syncing: [],
   indexed: [],
 };
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
+    case "request_auth":
+      return { ...state, pendingAuth: action.id };
+
+    // Cancelling the consent screen leaves the connector untouched.
+    case "cancel_auth":
+      return { ...state, pendingAuth: null };
+
     case "connect_start":
       return {
         ...state,
+        pendingAuth: null,
         connectors: {
           ...state.connectors,
           [action.id]: { status: "connecting" },
@@ -90,7 +104,8 @@ export default function DashboardPage() {
     return () => pending.forEach(clearTimeout);
   }, []);
 
-  function handleConnect(id: ConnectorId) {
+  /** Authorizing on the mock consent screen starts the simulated connect. */
+  function handleAuthorize(id: ConnectorId) {
     dispatch({ type: "connect_start", id });
 
     timers.current.push(
@@ -157,7 +172,9 @@ export default function DashboardPage() {
                       ? formatRelative(connectorState.connectedAt, now)
                       : undefined
                   }
-                  onConnect={() => handleConnect(connector.id)}
+                  onConnect={() =>
+                    dispatch({ type: "request_auth", id: connector.id })
+                  }
                 />
               );
             })}
@@ -177,6 +194,16 @@ export default function DashboardPage() {
           </section>
         )}
       </main>
+
+      <AuthorizeDialog
+        connector={
+          state.pendingAuth ? connectorById[state.pendingAuth] : null
+        }
+        onAuthorize={() => {
+          if (state.pendingAuth) handleAuthorize(state.pendingAuth);
+        }}
+        onCancel={() => dispatch({ type: "cancel_auth" })}
+      />
     </div>
   );
 }

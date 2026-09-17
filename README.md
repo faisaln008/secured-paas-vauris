@@ -18,9 +18,13 @@ Then open <http://localhost:3000>. `/` redirects to `/login`.
 1. **`/login`** — enter any username and any password (both must be non-empty),
    then click **Log in**. There is no credential check; any input signs you in.
    The "Forgot password?" link is decorative.
-2. **`/dashboard`** — click **Connect** on **Confluence** or **GitHub**.
-   The button shows a brief "Connecting…" state, then flips to a mint
-   **Connected** badge with a mock relative timestamp.
+2. **`/dashboard`** — click **Connect** on **Confluence** or **GitHub**. A
+   simulated OAuth consent dialog appears, showing the provider host
+   (`auth.atlassian.com` / `github.com`) and the permissions being requested.
+   - **Authorize access** → the button shows a brief "Connecting…" state, then
+     flips to a mint **Connected** badge with a mock relative timestamp.
+   - **Cancel**, the ✕, `Escape` or a click outside → the dialog closes and the
+     connector is left exactly as it was. Nothing connects.
 3. Once a source connects, the **vector database** panel appears and shows
    "Syncing to vector database…" for a few seconds before listing the mock
    ingested items (`12 pages indexed from Confluence · just now`).
@@ -37,7 +41,8 @@ server.
 | Behaviour | Reality |
 | --- | --- |
 | Login | Checks only that both fields are non-empty, then routes to `/dashboard` |
-| Connect | `setTimeout` (~1.4s) — no OAuth, no network request |
+| Consent dialog | An in-page modal styled as a provider consent screen. No provider is contacted and no window is opened |
+| Connect | `setTimeout` (~1.4s) after authorizing — no OAuth, no network request |
 | Ingestion | `setTimeout` (~2.8s) plus a cosmetic progress bar |
 | Ingested counts | Hard-coded in `src/lib/connectors.ts` |
 | Notion / SharePoint / Google Drive | Non-interactive "Coming soon" cards |
@@ -55,6 +60,7 @@ src/
   components/
     login-form.tsx        Login fields, validation and routing
     connector-card.tsx    Live connector card + "Coming soon" card
+    authorize-dialog.tsx  Simulated OAuth consent screen
     ingestion-panel.tsx   Simulated sync progress and ingested list
     top-bar.tsx           Product name, placeholder user, log out
     brand-mark.tsx        Placeholder logo and wordmark
@@ -86,7 +92,8 @@ stack. Layouts are responsive from 375px upward.
 ## Not implemented, by design
 
 - Real authentication or session management
-- Real OAuth or API calls to Confluence or GitHub
+- Real OAuth or API calls to Confluence or GitHub — the consent dialog is a
+  mock modal, not a provider redirect or a `window.open` popup
 - A real vector database or ingestion pipeline
 - Any persistence layer
 

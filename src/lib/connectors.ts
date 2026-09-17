@@ -8,6 +8,10 @@ export interface Connector {
   description: string;
   /** Mock ingestion summary shown once the simulated sync finishes. */
   ingest: { count: number; unit: string };
+  /** Host shown in the simulated OAuth consent dialog. Never contacted. */
+  authHost: string;
+  /** Mock permission scopes listed on the consent screen. */
+  scopes: string[];
 }
 
 export interface ComingSoonConnector {
@@ -22,12 +26,24 @@ export const LIVE_CONNECTORS: Connector[] = [
     name: "Confluence",
     description: "Index spaces, pages and internal documentation.",
     ingest: { count: 12, unit: "pages" },
+    authHost: "auth.atlassian.com",
+    scopes: [
+      "Read spaces and pages you have access to",
+      "Read page content, comments and attachments",
+      "Read space and page metadata",
+    ],
   },
   {
     id: "github",
     name: "GitHub",
     description: "Index repositories, READMEs and source files.",
     ingest: { count: 34, unit: "files" },
+    authHost: "github.com",
+    scopes: [
+      "Read repository contents and metadata",
+      "Read READMEs, source files and wikis",
+      "Read organisation and team membership",
+    ],
   },
 ];
 
